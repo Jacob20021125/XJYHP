@@ -65,6 +65,8 @@
             backdrop-filter: blur(12px);
             border-radius: 12px;
             padding: 20px;
+            /* 关键修改：增加顶部内边距，避免复制按钮和文案重叠 */
+            padding-top: 45px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
             border: 1px solid rgba(200, 200, 200, 0.15);
             color: #333;
@@ -79,7 +81,7 @@
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
         }
 
-        /* 复制按钮 - 适配竖屏 */
+        /* 复制按钮 - 适配竖屏（关键修改） */
         .copy-btn {
             position: absolute;
             top: 12px;
@@ -92,6 +94,11 @@
             cursor: pointer;
             font-size: 0.85rem;
             transition: all 0.3s ease;
+            /* 关键修改：增加z-index确保按钮在最上层 */
+            z-index: 10;
+            /* 关键修改：固定宽度，避免按钮变形 */
+            min-width: 60px;
+            text-align: center;
         }
 
         .copy-btn:hover {
@@ -326,6 +333,8 @@
             .review-card {
                 font-size: 0.95rem;
                 padding: 18px;
+                /* 移动端额外增加顶部内边距 */
+                padding-top: 40px;
             }
             
             .modal-content {
@@ -339,6 +348,13 @@
             .contact-phone {
                 padding: 6px 14px;
                 font-size: 0.95rem;
+            }
+            
+            /* 移动端优化复制按钮 */
+            .copy-btn {
+                font-size: 0.8rem;
+                padding: 5px 10px;
+                min-width: 55px;
             }
         }
 
@@ -368,8 +384,9 @@
             <button class="close-modal" onclick="closeModal()">&times;</button>
             <h2>选择分享平台</h2>
             <div class="link-buttons">
-                <a href="https://www.douyin.com/" class="app-link douyin" target="_blank" rel="noopener noreferrer">打开抖音</a>
-                <a href="https://www.meituan.com/" class="app-link meituan" target="_blank" rel="noopener noreferrer">打开美团</a>
+                <!-- 关键修改：改为APP唤起链接 -->
+                <a href="douyin://" class="app-link douyin" id="douyinLink" target="_blank" rel="noopener noreferrer">打开抖音</a>
+                <a href="meituan://" class="app-link meituan" id="meituanLink" target="_blank" rel="noopener noreferrer">打开美团</a>
             </div>
         </div>
     </div>
@@ -631,6 +648,9 @@
         const reminderTitle = document.getElementById('reminderTitle');
         const reminderText = document.getElementById('reminderText');
         const wechatCopyFix = document.getElementById('wechatCopyFix');
+        // APP链接元素
+        const douyinLink = document.getElementById('douyinLink');
+        const meituanLink = document.getElementById('meituanLink');
 
         // 页面加载时生成5条随机好评（添加DOM加载完成监听）
         document.addEventListener('DOMContentLoaded', function() {
@@ -643,8 +663,67 @@
             if (isWeChatBrowser()) {
                 document.body.style.paddingBottom = '110px'; // 调整底部内边距
                 console.log('微信浏览器环境，已启用兼容模式');
+                
+                // 微信环境下APP唤起优化
+                setupWechatAppLink();
             }
+            
+            // 监听APP链接点击，增加容错处理
+            setupAppLinkClickHandler();
         });
+
+        // ========== 新增：APP唤起链接优化 ==========
+        // 微信环境下APP链接处理（微信内需要特殊处理）
+        function setupWechatAppLink() {
+            // 微信内无法直接唤起APP，修改链接文案和行为
+            douyinLink.href = 'https://www.douyin.com/';
+            meituanLink.href = 'https://www.meituan.com/';
+            douyinLink.textContent = '打开抖音网页版';
+            meituanLink.textContent = '打开美团网页版';
+            
+            // 添加提示
+            const tip = document.createElement('p');
+            tip.style.marginTop = '15px';
+            tip.style.color = '#666';
+            tip.style.fontSize = '0.9rem';
+            tip.textContent = '提示：微信内无法直接打开APP，将为您打开网页版';
+            document.querySelector('.link-buttons').appendChild(tip);
+        }
+
+        // APP链接点击容错处理
+        function setupAppLinkClickHandler() {
+            // 抖音链接
+            douyinLink.addEventListener('click', function(e) {
+                // 设置超时，如果500ms内没有唤起APP，则跳转到网页版
+                const timeout = setTimeout(() => {
+                    this.href = 'https://www.douyin.com/';
+                    this.target = '_blank';
+                }, 500);
+                
+                // 监听页面隐藏事件（表示APP已唤起）
+                document.addEventListener('visibilitychange', function() {
+                    if (document.hidden) {
+                        clearTimeout(timeout);
+                    }
+                }, { once: true });
+            });
+            
+            // 美团链接
+            meituanLink.addEventListener('click', function(e) {
+                // 设置超时，如果500ms内没有唤起APP，则跳转到网页版
+                const timeout = setTimeout(() => {
+                    this.href = 'https://www.meituan.com/';
+                    this.target = '_blank';
+                }, 500);
+                
+                // 监听页面隐藏事件（表示APP已唤起）
+                document.addEventListener('visibilitychange', function() {
+                    if (document.hidden) {
+                        clearTimeout(timeout);
+                    }
+                }, { once: true });
+            });
+        }
 
         // 生成指定数量的随机好评
         function generateRandomReviews(count) {
